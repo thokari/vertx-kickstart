@@ -1,0 +1,17 @@
+{
+    "websiteUrl": "http://localhost:8080",
+    "dbName": "vertx",
+    "emailServer": {
+        "hostname": "localhost",
+        "port": 1025
+    },
+    "jwt": {
+        "keyStore": {
+            "type": "jceks",
+            "path": "keystore.jceks",
+            "password": "password"
+        }
+    },
+    "emailExpiresInMinutes": 1440,
+    "loginExpiresInMinutes": 30
+}

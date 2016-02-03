@@ -1,0 +1,75 @@
+<html>
+<head>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+</head>
+<body>
+<h1>Web site with public and private pages</h1>
+<br>
+<br>
+<div id="login">
+    <input type="text" id="email" placeholder="Email"></input>
+    <input type="password" id="password" placeholder="Password"></input>
+    <br>
+    <button id="generateToken">Log in</button><br>
+    <br>
+    <div id="token">Current token:</div>
+</div>
+<br>
+<br>
+<div id="test">
+    <a href="#" id="getProtected0">Get Protected Resource (no roles required)</a><br>
+    <a href="#" id="getProtected1">Get Protected Resource (admin role required)</a><br>
+    <a href="#" id="getProtected2">Get Protected Resource (confirmed email required)</a><br>
+    <div id="protected"></div>
+    <br>
+    <button id="deleteToken">Log out</button><br>
+</div>
+<script>
+    $(document).ready(function () {
+        $('#email').val('email@test.de')
+        $('#password').val('secret123')
+        $('#roles').val('admin')
+        var genToken = function(email, password) {
+            $.ajax({
+                method: 'POST',
+                url: '/api/login',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    email: email,
+                    password: password,
+                }),
+                success: function (text) {
+                    $('#token').html('Current Token: ' + text);
+                }
+            });
+        };
+        $('#generateToken').click(function () {
+            var email = $('#email').val()
+            var password = $('#password').val()
+            genToken(email, password)
+        });
+        var getResource = function(authority) {
+            return function () {
+                $.ajax({
+                    url: '/api/protected' + authority,
+                    contentType: 'application/json',
+                    headers: {
+                        'Authorization': 'Bearer ' + $('#token').html().substring(15)
+                    },
+                    success: function (text) {
+                        $('#protected').html(text);
+                    },
+                    error: function (err) {
+                        $('#protected').html('Error: ' + err.responseText);
+                    }
+                });
+            }
+        };
+        $('#getProtected0').on('click', getResource(''));
+        $('#getProtected1').on('click', getResource('/admin'));
+        $('#getProtected2').on('click', getResource('/email_confirmed'));
+        $('#deleteToken').on('click', function () { $('#token').html('Current Token: ') });
+    });
+</script>
+</body>
+</html>
