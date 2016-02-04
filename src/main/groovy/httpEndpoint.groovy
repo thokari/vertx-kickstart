@@ -13,6 +13,30 @@ def eb = vertx.eventBus()
 router.route('/api/*').handler(BodyHandler.create().setUploadsDirectory('/tmp/vertx-file-uploads'))
 
 // this route is excluded from the auth handler (it represents your login endpoint)
+router.post('/api/register').handler({ ctx ->
+    def body = ctx.getBodyAsJson()
+    def msg = [
+        email: body.email,
+        password: body.password,
+        passwordConfirm: body.passwordConfirm,
+        permissions: body.permissions
+    ]
+    ctx.response().putHeader('Content-Type', 'text/plain')
+    eb.send('registration.register', msg, { res ->
+        if (res.succeeded()) {
+            def result = res.result().body()
+            if ('ok' == result.status) {
+                ctx.response().end('Thank you, please check your email!')
+            } else {
+                ctx.response().end(result.message)
+            }
+        } else {
+            ctx.response().end(res.cause().message)
+        }
+    })
+})
+
+// this route is excluded from the auth handler (it represents your login endpoint)
 router.post('/api/login').handler({ ctx ->
     def params = ctx.getBodyAsJson()
     def msg = [
@@ -33,10 +57,16 @@ router.post('/api/login').handler({ ctx ->
 router.get('/confirm_email/:token').handler({ ctx ->
     def token = ctx.request().getParam('token')
     def msg = [ token: token ]
-    ctx.response().putHeader('Location', appConfig.websiteUrl)
     eb.send('registration.confirm', msg, { res ->
         if (res.succeeded()) {
-            ctx.response().setStatusCode(301).end()
+            def result = res.result().body()
+            if ('ok' == result.status) {
+                ctx.response().putHeader('Location', appConfig.websiteUrl)
+                ctx.response().setStatusCode(302).end()
+            } else {
+                ctx.response().putHeader('Content-Type', 'text/plain')
+                ctx.response().end(result.message)
+            }
         } else {
             ctx.response().putHeader('Content-Type', 'text/plain')
             ctx.response().setStatusCode(500).end(res.cause().message)

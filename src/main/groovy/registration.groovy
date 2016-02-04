@@ -15,6 +15,7 @@ def mailClient = MailClient.createShared(vertx, appConfig.emailServer, 'MailClie
 def eb = vertx.eventBus()
 
 eb.consumer 'registration.register', { msg ->
+    println 'MSG' + msg.body()
     def email = msg.body().email
     def password = msg.body().password
     def passwordConfirm = msg.body().passwordConfirm
@@ -26,20 +27,34 @@ eb.consumer 'registration.register', { msg ->
     } else if (!(password.equals(passwordConfirm))) {
         replyError msg, 'Passwort not repeated correctly'
     } else {
-        def token = generateEmailToken(authProvider, email)
-        saveRegistration(dbClient, email, password, permissions, { res1 ->
-            if (res1.succeeded()) {
-                sendEmail(mailClient, email, token, appConfig.websiteUrl, { res2 ->
-                    if (res2.succeeded()) {
-                        replySuccess msg, [ email: email, token: token ]
-                    } else {
-                        replyError msg, res2.cause().message
-                    }
-                })
+        checkExistence(dbClient, email, { res0 ->
+            if (res0.succeeded()) {
+                def exists = res0.result()
+                println 'EXISTS' + exists
+                if (!exists) {
+                    def token = generateEmailToken(authProvider, email)
+                    saveRegistration(dbClient, email, password, permissions, { res1 ->
+                        if (res1.succeeded()) {
+                            sendConfirmationEmail(mailClient, email, token, appConfig.websiteUrl, { res2 ->
+                                if (res2.succeeded()) {
+                                    replySuccess msg, [ email: email, token: token ]
+                                } else {
+                                    replyError msg, res2.cause().message
+                                }
+                            })
+                        } else {
+                            println 'NOT'
+                            replyError msg, res1.cause().message
+                        }
+                    })
+                } else {
+                    replyError msg, 'Error' // TODO if email confirmed, send notice, if unconfirmed, offer resend...
+                }
             } else {
-                replyError msg, res1.cause().message
+                replyError msg, res0.cause().message
             }
         })
+
     }
 }
 
@@ -78,7 +93,7 @@ eb.consumer 'registration.login', { msg ->
     })
 }
 
-def sendEmail (mailClient, email, token, websiteUrl, cb) {
+def sendConfirmationEmail (mailClient, email, token, websiteUrl, cb) {
     def target = "$websiteUrl/confirm_email/$token"
     def html = """
 Follow <a href="$target" target="_blank">this link</a> to confirm your email address.
@@ -101,6 +116,19 @@ def generateLoginToken (authProvider, email, loginResult) {
     def expiresInMinutes = vertx.currentContext().config().loginExpiresInMinutes
     def options = [ permissions: loginResult.permissions, expiresInMinutes: expiresInMinutes ]
     authProvider.generateToken payload, options
+}
+
+def checkExistence (dbClient, email, cb) {
+    withConnection(dbClient, { conn ->
+        def query = 'SELECT email FROM registration WHERE email = ?'
+        conn.queryWithParams(query, [ email ], { res ->
+            if (res.result().numRows == 1) {
+                cb(Future.succeededFuture(true))
+            } else {
+                cb(Future.succeededFuture(false))
+            }
+        })
+    })
 }
 
 def saveRegistration (dbClient, email, password, permissions, cb) {
@@ -128,12 +156,16 @@ def confirmEmail (dbClient, email, cb) {
     withConnection(dbClient, { conn ->
         conn.queryWithParams('SELECT email_confirmed FROM registration WHERE email = ?', [ email ], { res1 ->
             if (res1.succeeded()) {
-                def emailConfirmed = res1.result().results[0][0]
-                if (emailConfirmed == true) {
-                    cb(Future.failedFuture('Email address already confirmed'))
+                if (res1.result().numRows < 1) {
+                    cb(Future.failedFuture('Error'))
                 } else {
-                    def query = 'UPDATE registration SET email_confirmed = ? WHERE email = ?'
-                    conn.updateWithParams(query, [ true, email ], cb)
+                    def emailConfirmed = res1.result().rows[0].email_confirmed
+                    if (emailConfirmed == true) {
+                        cb(Future.failedFuture('Email address already confirmed'))
+                    } else {
+                        def query = 'UPDATE registration SET email_confirmed = ? WHERE email = ?'
+                        conn.updateWithParams(query, [ true, email ], cb)
+                    }
                 }
             } else {
                 cb(res1)
@@ -149,19 +181,20 @@ def comparePasswordAndGetPermissions (dbClient, email, candidate, cb) {
             if (res1.succeeded()) {
                 if (res1.result().numRows < 1) {
                     cb(Future.failedFuture('Credentials do not match'))
-                }
-                def row = res1.result().rows[0]
-                def hashed = row.password
-                def permissions = row.permissions.split(',').toList() // String[] != List == JsonArray
-                def emailConfirmed = row.email_confirmed
-                if (BCrypt.checkpw(candidate, hashed)) {
-                    def loginResult = [
-                        permissions: permissions,
-                        emailConfirmed: emailConfirmed
-                    ]
-                    cb(Future.succeededFuture(loginResult))
                 } else {
-                    cb(Future.failedFuture('Credentials do not match'))
+                    def row = res1.result().rows[0]
+                    def hashed = row.password
+                    def permissions = row.permissions.split(',').toList() // String[] != List == JsonArray
+                    def emailConfirmed = row.email_confirmed
+                    if (BCrypt.checkpw(candidate, hashed)) {
+                        def loginResult = [
+                            permissions: permissions,
+                            emailConfirmed: emailConfirmed
+                        ]
+                        cb(Future.succeededFuture(loginResult))
+                    } else {
+                        cb(Future.failedFuture('Credentials do not match'))
+                    }
                 }
             } else {
                 cb(res1)

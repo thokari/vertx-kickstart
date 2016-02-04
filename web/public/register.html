@@ -1,0 +1,52 @@
+<html>
+<head>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+</head>
+<body>
+<h1>Registration</h1>
+<br>
+<br>
+<div id="register">
+    <input type="text" id="email" placeholder="Email"></input>
+    <input type="password" id="password" placeholder="Password"></input>
+    <input type="password" id="password_confirm" placeholder="Repeat Password"></input>
+    <input type="text" id="roles" placeholder="Desired roles"></input>
+    <br>
+    <button id="sign_up">Sign up</button><br>
+</div>
+<br>
+<br>
+<div id="message"></div>
+<script>
+    $(document).ready(function () {
+        $('#email').val('email@test.de')
+        $('#password').val('secret123')
+        $('#password_confirm').val('secret123')
+        $('#roles').val('admin')
+        var signUp = function(email, password, passwordConfirm, roles) {
+            $.ajax({
+                method: 'POST',
+                url: '/api/register',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    email: email,
+                    password: password,
+                    passwordConfirm: passwordConfirm,
+                    permissions: roles
+                }),
+                success: function (text) {
+                    $('#message').html(text);
+                }
+            });
+        };
+        $('#sign_up').click(function () {
+            var email = $('#email').val()
+            var password = $('#password').val()
+            var passwordConfirm = $('#password_confirm').val()
+            var roles = $('#roles').val().split(',')
+            signUp(email, password, passwordConfirm, roles)
+        });
+    });
+</script>
+</body>
+</html>
