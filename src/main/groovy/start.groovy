@@ -14,34 +14,8 @@ void vertxStart(Future<Void> future) {
                 if (res2.succeeded()) {
                     future.complete()
                 } else {
-                    res2.cause().printStackTrace()
+                    future.fail()
                 }
-            }
-            vertx.setTimer 500, {
-                def msg = [
-                    email: 'email@test.de',
-                    password: 'secret123',
-                    passwordConfirm: 'secret123',
-                    permissions: [ 'admin' ]
-                ]
-                vertx.eventBus().send('registration.register', msg, { res2 ->
-                    if (res2.succeeded()) {
-                        def reply = res2.result().body()
-                        println 'REG_REPLY ' + reply
-                        def token = reply.token
-                        def confirmMsg = [ token: token ]
-                        vertx.eventBus().send('registration.confirm', confirmMsg, { res3 ->
-                            println 'CONF_REPLY ' + res3.result().body()
-                            def loginMsg = [ email: msg.email, password: msg.password ]
-                            vertx.eventBus().send('registration.login', loginMsg, { res4 ->
-                                println 'LOGIN_REPLY ' + res4.result().body()
-                                token = res4.result().body()
-                            })
-                        })
-                    } else {
-                        res2.cause().printStackTrace()
-                    }
-                })
             }
         } else {
             res1.cause().printStackTrace()

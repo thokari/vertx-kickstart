@@ -15,7 +15,6 @@ def mailClient = MailClient.createShared(vertx, appConfig.emailServer, 'MailClie
 def eb = vertx.eventBus()
 
 eb.consumer 'registration.register', { msg ->
-    println 'MSG' + msg.body()
     def email = msg.body().email
     def password = msg.body().password
     def passwordConfirm = msg.body().passwordConfirm
@@ -30,7 +29,6 @@ eb.consumer 'registration.register', { msg ->
         checkExistence(dbClient, email, { res0 ->
             if (res0.succeeded()) {
                 def exists = res0.result()
-                println 'EXISTS' + exists
                 if (!exists) {
                     def token = generateEmailToken(authProvider, email)
                     saveRegistration(dbClient, email, password, permissions, { res1 ->
@@ -43,7 +41,6 @@ eb.consumer 'registration.register', { msg ->
                                 }
                             })
                         } else {
-                            println 'NOT'
                             replyError msg, res1.cause().message
                         }
                     })
@@ -54,7 +51,6 @@ eb.consumer 'registration.register', { msg ->
                 replyError msg, res0.cause().message
             }
         })
-
     }
 }
 

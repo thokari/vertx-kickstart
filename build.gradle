@@ -43,6 +43,8 @@ dependencies {
     compile "io.vertx:vertx-mail-client:$vertxVersion"
     compile "io.vertx:vertx-shell:$vertxVersion"
     runtime 'org.postgresql:postgresql:9.4.1207.jre7'
+    testCompile 'junit:junit:4.12'
+    testCompile "io.vertx:vertx-unit:$vertxVersion"
 }
 
 version = '0.0.1'
@@ -81,6 +83,12 @@ mainClassName = 'io.vertx.core.Launcher'
 run {
     classpath = sourceSets.main.runtimeClasspath
     args = ['run', mainVerticleName, "--redeploy=$watchForChange", "--launcher-class=$mainClassName", "--on-redeploy=$doOnChange", "-conf=$config"]
+}
+
+test {
+    testLogging {
+        showStandardStreams = true
+    }
 }
 
 task clearDb(type: Exec) {
