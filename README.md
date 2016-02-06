@@ -22,4 +22,4 @@ It implements a basic registration story:
 
 ## Tests
 
-Run the tests with `./gradlew test --continuous` to have the rerun on any change to source files 
+Run the tests with `./gradlew test --continuous` to have them execute on any change to source files 
