@@ -14,12 +14,10 @@ import static org.junit.Assert.*
 @RunWith(VertxUnitRunner.class)
 public class RegistrationTestSuite {
 
-    @Rule
-    public RunTestOnContext rule = new RunTestOnContext()
+    Vertx vertx = Vertx.vertx()
 
     @Before
     public void before(TestContext context) {
-        Vertx vertx = new Vertx(rule.vertx())
         def config = [
             websiteUrl: 'http://localhost:8080',
             dbName: 'vertx_test',
@@ -48,34 +46,28 @@ public class RegistrationTestSuite {
             created DATE
         );""")
 
-        vertx.deployVerticle('groovy:registration', [ config: config ], { res ->
-            context.async().complete()
-        })
-        context.async().await()
+        vertx.deployVerticle('groovy:registration', [ config: config ], context.asyncAssertSuccess())
     }
 
     @After
     public void after(TestContext context) {
-        rule.vertx.close(context.async().complete())
+        vertx.close(context.async().complete())
     }
 
     @Test
     public void testRegisterCanSucceed(TestContext context) {
-        Vertx vertx = new Vertx(rule.vertx())
+        def async = context.async()
         def msg = [
             email: 'email@test.de',
             password: 'password',
             passwordConfirm: 'password',
-            roles: ['admin'],
+            permissions: ['admin'],
         ]
-        vertx.setTimer(500, { res1 ->
-            vertx.eventBus().send('registration.register', msg, { res2 ->
-                if (res2.succeeded()) {
-                    context.async().complete()
-                } else {
-                    println res2.cause()
-                }
-            })
+        vertx.eventBus().send('registration.register', msg, { res2 ->
+            context.assertTrue(res2.succeeded())
+            def reply = res2.result().body()
+            context.assertEquals('ok', reply.status)
+            async.complete()
         })
     }
 }

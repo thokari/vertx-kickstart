@@ -33,10 +33,12 @@ eb.consumer 'registration.register', { msg ->
                     def token = generateEmailToken(authProvider, email)
                     saveRegistration(dbClient, email, password, permissions, { res1 ->
                         if (res1.succeeded()) {
+                            replySuccess msg, [ email: email, token: token ]
                             sendConfirmationEmail(mailClient, email, token, appConfig.websiteUrl, { res2 ->
                                 if (res2.succeeded()) {
                                     replySuccess msg, [ email: email, token: token ]
                                 } else {
+                                    res2.cause().printStackTrace()
                                     replyError msg, res2.cause().message
                                 }
                             })
