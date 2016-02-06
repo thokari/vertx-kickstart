@@ -22,4 +22,5 @@ It implements a basic registration story:
 
 ## Tests
 
-Run the tests with `./gradlew test --continuous` to have them execute on any change to source files 
+Create a database `vertx_test`.
+Run the tests with `./gradlew test --continuous` to have them execute on any change to source files.
