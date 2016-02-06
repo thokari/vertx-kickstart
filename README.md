@@ -20,4 +20,6 @@ It implements a basic registration story:
 10. Go to [http://localhost:8080](), log in and access the resources.
 
 
-// TODO describe how to make the tests run (continuously) and uncomment them
+## Tests
+
+Run the tests with `./gradlew test --continuous` to have the rerun on any change to source files 
